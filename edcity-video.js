@@ -1,7 +1,7 @@
 /*!
  * edcity-video.js — chapter / summary / mind-map panel for Kaltura players
  * that the host page has ALREADY embedded.
- * v3.0.2
+ * v3.0.3
  *
  * WHAT CHANGED FROM v2.4.0 — read this first
  * ------------------------------------------
@@ -1339,7 +1339,28 @@
     var svg = this.mmView && this.mmView.querySelector('svg');
     if (!svg) return;
     this.mmScale = scale;
-    if (this.mmNatural) svg.style.width = Math.round(this.mmNatural * this.mmScale) + 'px';
+    if (this.mmNatural) {
+      // Mermaid writes an inline `max-width: <natural>px` onto the <svg> it
+      // renders. Setting style.width past that does nothing at all — the
+      // diagram silently stops growing while the zoom index keeps climbing,
+      // so the last clicks of + appear dead before the button disables.
+      // (Seen live: natural 643.7px, levels asking for 771 / 1234 / 1974px,
+      // all three rendering at 644px.) Clearing the cap is the fix; height
+      // stays auto so the viewBox keeps the aspect ratio.
+      // Keep whatever the visitor is looking at in the middle of the view.
+      // Without this, growing the diagram leaves the scroll position at the
+      // top-left and a zoomed-in mind map looks like an empty white box.
+      var view = this.mmView;
+      var cx = view.scrollWidth  ? (view.scrollLeft + view.clientWidth  / 2) / view.scrollWidth  : 0.5;
+      var cy = view.scrollHeight ? (view.scrollTop  + view.clientHeight / 2) / view.scrollHeight : 0.5;
+
+      svg.style.maxWidth = 'none';
+      svg.style.height = 'auto';
+      svg.style.width = Math.round(this.mmNatural * this.mmScale) + 'px';
+
+      view.scrollLeft = Math.max(0, cx * view.scrollWidth  - view.clientWidth  / 2);
+      view.scrollTop  = Math.max(0, cy * view.scrollHeight - view.clientHeight / 2);
+    }
     this.updateZoomButtons();
   };
 
@@ -1727,7 +1748,7 @@
 
   var API = {
     __loaded: true,
-    version: '3.0.2',
+    version: '3.0.3',
     defaults: cfg,
     init: init,
     instances: instances,
